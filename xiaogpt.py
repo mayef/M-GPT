@@ -8,6 +8,7 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 
 from aiohttp import ClientSession
+import cn2an
 from miservice import MiAccount, MiNAService
 from requests.utils import cookiejar_from_dict
 from revChatGPT.V1 import Chatbot, configure
@@ -38,6 +39,8 @@ def parse_cookie_string(cookie_string):
         cookiejar = cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
     return cookiejar
 
+def remove_spaces(text):
+    return "".join(text.split())
 
 class MiGPT:
     def __init__(
@@ -146,7 +149,7 @@ class MiGPT:
             subprocess.check_output(["micli", self.tts_command, value])
 
     def _normalize(self, message):
-        message = message.replace(" ", "，")
+        # message = message.replace(" ", "，") # should not replace space with ', ', lest ', ' will break english sentence 
         message = message.replace("\n", "，")
         message = message.replace('"', "，")
         return message
@@ -162,7 +165,7 @@ class MiGPT:
         if message := data.get("message", ""):
             # xiaoai tts did not support space
             message = self._normalize(message)
-            message = "以下是GPT的回答:" + message
+            message = "诶，神奇海螺来了:" + message
             return message
         return ""
 
@@ -184,10 +187,11 @@ class MiGPT:
     async def run_forever(self):
         async with ClientSession() as session:
             await self.init_all_data(session)
+            print("All you need is ChatGPT")
             while 1:
-                print(
-                    f"Now listening xiaoai new message timestamp: {self.last_timestamp}"
-                )
+                # print(
+                #    f"Now listening xiaoai new message timestamp: {self.last_timestamp}"
+                #)
                 try:
                     r = await self.get_latest_ask_from_xiaoai()
                 except Exception:
@@ -205,24 +209,28 @@ class MiGPT:
                 if new_timestamp > self.last_timestamp:
                     self.last_timestamp = new_timestamp
                     query = last_record.get("query", "")
-                    if query.find("帮我回答") != -1:
+                    if query.find("问问神奇海螺") != -1:
                         self.this_mute_xiaoai = False
-                        # drop 帮我回答
-                        query = query[4:] + "，请用100字以内回答"
+                        # drop '问问神奇海螺'
+                        query = cn2an.transform(remove_spaces(query[6:]))
+                        print("小爱说: ", query)
                         # waiting for xiaoai speaker done
                         if not self.mute_xiaoai:
-                            await asyncio.sleep(8)
-                        await self.do_tts("正在问GPT有点慢请耐心等待")
+                            await asyncio.sleep(1)
+                        await self.do_tts("小爱去问神奇海螺了")
+                        try:
+                            message = await self.ask_gpt(query)
+                        except:
+                            message = "神奇海螺挂了"
                         try:
                             print(
-                                "以下是小爱的回答: ",
+                                "小爱来了: ",
                                 last_record.get("answers")[0]
                                 .get("tts", {})
                                 .get("text"),
                             )
                         except:
-                            print("小爱没回")
-                        message = await self.ask_gpt(query)
+                            print("小爱挂了")
                         # tts to xiaoai with ChatGPT answer
                         print(message)
                         await self.do_tts(message)
@@ -233,8 +241,8 @@ class MiGPT:
                                 if not is_playing:
                                     break
                             self.this_mute_xiaoai = True
-                else:
-                    print("No new xiao ai record")
+                # else:
+                    # print("No new xiao ai record")
 
 
 if __name__ == "__main__":

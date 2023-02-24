@@ -1,3 +1,9 @@
+# M-GPT v0.1.0
+1. feat: chinese to arabic number
+2. feat: remove spaces in query, like  "你好 世界" -> "你好世界"
+3. fix: replacing " " with ", " breaks english sentence 
+4. fix: wait time for xiaoai complete response is too long, 8s -> 1s
+
 # xiaogpt
 Play ChatGPT with Xiaomi AI Speaker
 

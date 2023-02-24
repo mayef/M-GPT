@@ -2,4 +2,5 @@ rich
 git+https://github.com/yihong0618/MiService
 requests
 revChatGPT
-
+aiohttp
+cn2an
